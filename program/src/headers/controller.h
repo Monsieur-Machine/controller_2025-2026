@@ -3,18 +3,18 @@
 
 #include <stdbool.h>
 
-typedef struct robot_t {
+typedef struct controller_t {
     bool is_running;
     float delta_time_ms;
-} robot_t;
+} controller_t;
 
-extern robot_t robot;
+extern controller_t controller;
 
-// Init all robot's components
-void robot_init(void);
+// Init all controller's components
+void controller_init(void);
 // Handle inputs and outputs
-void robot_handle_inputs_outputs(void);
-// Deinit all robot's components
-void robot_deinit(void);
+void controller_handle_inputs_outputs(void);
+// Deinit all controller's components
+void controller_deinit(void);
 
 #endif // ROBOT_H

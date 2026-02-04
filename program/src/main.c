@@ -8,20 +8,20 @@
 *   Ce Pico est un maitre pilotant le gyroscope, l'internet et le motion controller.*
 \* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "headers/robot.h"
+#include "headers/controller.h"
 
-robot_t robot;
+controller_t controller;
 
 int main(void)
 {
-    robot_init();
+    controller_init();
 
-    while(robot.is_running)
+    while(controller.is_running)
     {
-        robot_handle_inputs_outputs();
+        controller_handle_inputs_outputs();
     }
 
-    robot_deinit();
+    controller_deinit();
 
     return 0;
 }

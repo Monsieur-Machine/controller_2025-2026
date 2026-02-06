@@ -1,10 +1,11 @@
-#ifndef UDP_CLIENT_H
-#define UDP_CLIENT_H
+#ifndef UDP_SERVER_H
+#define UDP_SERVER_H
 
 #include <stdint.h>
 #include <lwip/udp.h>
 
 #define UDP_SERVER_PORT 4242
+#define UDP_CLIENT_PORT 4243
 
 typedef struct udp_server_t {
     struct udp_pcb *pcb;
@@ -17,4 +18,4 @@ void udp_server_send(void);
 // Exit udp client
 void udp_server_deinit(void);
 
-#endif // UDP_CLIENT_H
+#endif // UDP_SERVER_H

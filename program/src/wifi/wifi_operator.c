@@ -5,7 +5,7 @@
 #include <lwip/netif.h>
 #include <lwip/ip4_addr.h>
 
-int init_wifi_operator(void)
+int wifi_operator_init(void)
 {
     if(cyw43_wifi_pm(&cyw43_state, CYW43_NO_POWERSAVE_MODE))
     {

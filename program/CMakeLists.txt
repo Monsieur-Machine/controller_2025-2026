@@ -19,6 +19,7 @@ add_executable(controller
   src/controller.c
   src/wifi/wifi_operator.c
   src/wifi/udp_server.c
+  src/wifi/dhcp_server.c
 )
 
 target_include_directories(controller PRIVATE

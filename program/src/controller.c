@@ -18,14 +18,17 @@ void controller_init(void)
 
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, true);
 
-    if(init_wifi_operator())
+    if(wifi_operator_init())
+        controller.is_running = false;
+
+    if(dhcp_server_init())
         controller.is_running = false;
 
     if(udp_server_init())
         controller.is_running = false;
 
     // Initialisation ended
-    for(uint i = 0, led_state = true; i < 5; i++)
+    for(uint8_t i = 0, led_state = true; i < 5; i++)
     {
         cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, led_state);
 
@@ -61,6 +64,8 @@ void controller_handle_inputs_outputs(void)
     cyw43_arch_poll();
 
     update_time();
+
+    udp_server_send();
 
     tight_loop_contents();
 }

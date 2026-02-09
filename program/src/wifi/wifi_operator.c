@@ -14,10 +14,7 @@ int wifi_operator_init(void)
     }
 
     cyw43_arch_enable_ap_mode(WIFI_OPERATOR_SSID, WIFI_OPERATOR_PASSWORD, CYW43_AUTH_WPA2_AES_PSK);
-
     cyw43_wifi_ap_set_channel(&cyw43_state, WIFI_OPERATOR_CHANNEL);
-
-    puts("AP mode enabled");
 
     return 0;
 }

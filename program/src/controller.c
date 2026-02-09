@@ -42,21 +42,20 @@ void controller_init(void)
 
 static inline void update_time(void)
 {
-    static float last_time = 0.0;
-    float start_time = (float)clock() * 1000.0f / (float)CLOCKS_PER_SEC;
-    controller.delta_time_ms = start_time - last_time;
-    last_time = start_time;
+    static float last_time_ms = 0.0;
+    float start_time_ms = (float)clock() * 1000.0f / (float)CLOCKS_PER_SEC;
+    controller.delta_time_ms = start_time_ms - last_time_ms;
+    last_time_ms = start_time_ms;
 
-    static float elapsed_time = 0.0f;
-    elapsed_time += controller.delta_time_ms;
+    static float elapsed_time_ms = 0.0f;
+    elapsed_time_ms += controller.delta_time_ms;
 
     static bool led_state = false;
-    if(elapsed_time >= 1000.0f)
+    if(elapsed_time_ms >= 1000.0f)
     {
-        elapsed_time = 0.0f;
-
         cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, led_state);
 
+        elapsed_time_ms = 0.0f;
         led_state = !led_state;
     }
 }
@@ -77,4 +76,8 @@ void controller_handle_inputs_outputs(void)
 void controller_deinit(void)
 {
     udp_server_deinit();
+
+    dhcp_server_deinit();
+
+    cyw43_arch_deinit();
 }

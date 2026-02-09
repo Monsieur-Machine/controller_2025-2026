@@ -60,7 +60,7 @@ typedef struct {
     uint8_t options[312]; // optional parameters, variable, starts with magic
 } dhcp_msg_t;
 
-static int dhcp_socket_sendto(struct udp_pcb **pcb, struct netif *nif, const void *buf, size_t len, uint32_t ip, uint16_t port)
+static void dhcp_socket_sendto(struct netif *nif, const void *buf, size_t len, uint32_t ip, uint16_t port)
 {
     if(len > 0xffff)
     {
@@ -70,7 +70,8 @@ static int dhcp_socket_sendto(struct udp_pcb **pcb, struct netif *nif, const voi
     struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, len, PBUF_RAM);
     if(p == NULL)
     {
-        return -ENOMEM;
+        puts("Pbuf allocation error");
+        return;
     }
 
     memcpy(p->payload, buf, len);
@@ -82,21 +83,19 @@ static int dhcp_socket_sendto(struct udp_pcb **pcb, struct netif *nif, const voi
 
     if(nif != NULL)
     {
-        err = udp_sendto_if(*pcb, p, &dest, port, nif);
+        err = udp_sendto_if(controller.dhcp_server.pcb, p, &dest, port, nif);
     }
     else
     {
-        err = udp_sendto(*pcb, p, &dest, port);
+        err = udp_sendto(controller.dhcp_server.pcb, p, &dest, port);
     }
 
     pbuf_free(p);
 
     if(err != ERR_OK)
     {
-        return err;
+        printf("Error sending dhcp packets : %d\n", err);
     }
-
-    return len;
 }
 
 static uint8_t *opt_find(uint8_t *opt, uint8_t cmd)
@@ -144,10 +143,8 @@ static void opt_write_u32(uint8_t **opt, uint8_t cmd, uint32_t val)
     *opt = o;
 }
 
-static void dhcp_server_process(void *arg, struct udp_pcb *upcb __unused, struct pbuf *p, const ip_addr_t *src_addr __unused, u16_t src_port __unused)
+static void dhcp_server_process(void *arg __unused, struct udp_pcb *upcb __unused, struct pbuf *p, const ip_addr_t *src_addr __unused, u16_t src_port __unused)
 {
-    dhcp_server_t *d = arg;
-
     // This is around 548 bytes
     dhcp_msg_t dhcp_msg;
 
@@ -162,7 +159,7 @@ static void dhcp_server_process(void *arg, struct udp_pcb *upcb __unused, struct
     }
 
     dhcp_msg.op = DHCPOFFER;
-    memcpy(&dhcp_msg.yiaddr, &ip4_addr_get_u32(ip_2_ip4(&d->ip)), 4);
+    memcpy(&dhcp_msg.yiaddr, &ip4_addr_get_u32(ip_2_ip4(&controller.dhcp_server.ip)), 4);
 
     uint8_t *opt = (uint8_t *)&dhcp_msg.options;
     opt += 4; // assume magic cookie: 99, 130, 83, 99
@@ -177,21 +174,21 @@ static void dhcp_server_process(void *arg, struct udp_pcb *upcb __unused, struct
         case DHCPDISCOVER: {
             int yi = DHCPS_MAX_IP;
             for (int i = 0; i < DHCPS_MAX_IP; ++i) {
-                if (memcmp(d->lease[i].mac, dhcp_msg.chaddr, MAC_LEN) == 0) {
+                if (memcmp(controller.dhcp_server.lease[i].mac, dhcp_msg.chaddr, MAC_LEN) == 0) {
                     // MAC match, use this IP address
                     yi = i;
                     break;
                 }
                 if (yi == DHCPS_MAX_IP) {
                     // Look for a free IP address
-                    if (memcmp(d->lease[i].mac, "\x00\x00\x00\x00\x00\x00", MAC_LEN) == 0) {
+                    if (memcmp(controller.dhcp_server.lease[i].mac, "\x00\x00\x00\x00\x00\x00", MAC_LEN) == 0) {
                         // IP available
                         yi = i;
                     }
-                    uint32_t expiry = d->lease[i].expiry << 16 | 0xffff;
+                    uint32_t expiry = controller.dhcp_server.lease[i].expiry << 16 | 0xffff;
                     if ((int32_t)(expiry - cyw43_hal_ticks_ms()) < 0) {
                         // IP expired, reuse it
-                        memset(d->lease[i].mac, 0, MAC_LEN);
+                        memset(controller.dhcp_server.lease[i].mac, 0, MAC_LEN);
                         yi = i;
                     }
                 }
@@ -211,7 +208,7 @@ static void dhcp_server_process(void *arg, struct udp_pcb *upcb __unused, struct
                 // Should be NACK
                 goto ignore_request;
             }
-            if (memcmp(o + 2, &ip4_addr_get_u32(ip_2_ip4(&d->ip)), 3) != 0) {
+            if (memcmp(o + 2, &ip4_addr_get_u32(ip_2_ip4(&controller.dhcp_server.ip)), 3) != 0) {
                 // Should be NACK
                 goto ignore_request;
             }
@@ -220,17 +217,17 @@ static void dhcp_server_process(void *arg, struct udp_pcb *upcb __unused, struct
                 // Should be NACK
                 goto ignore_request;
             }
-            if (memcmp(d->lease[yi].mac, dhcp_msg.chaddr, MAC_LEN) == 0) {
+            if (memcmp(controller.dhcp_server.lease[yi].mac, dhcp_msg.chaddr, MAC_LEN) == 0) {
                 // MAC match, ok to use this IP address
-            } else if (memcmp(d->lease[yi].mac, "\x00\x00\x00\x00\x00\x00", MAC_LEN) == 0) {
+            } else if (memcmp(controller.dhcp_server.lease[yi].mac, "\x00\x00\x00\x00\x00\x00", MAC_LEN) == 0) {
                 // IP unused, ok to use this IP address
-                memcpy(d->lease[yi].mac, dhcp_msg.chaddr, MAC_LEN);
+                memcpy(controller.dhcp_server.lease[yi].mac, dhcp_msg.chaddr, MAC_LEN);
             } else {
                 // IP already in use
                 // Should be NACK
                 goto ignore_request;
             }
-            d->lease[yi].expiry = (cyw43_hal_ticks_ms() + DEFAULT_LEASE_TIME_S * 1000) >> 16;
+            controller.dhcp_server.lease[yi].expiry = (cyw43_hal_ticks_ms() + DEFAULT_LEASE_TIME_S * 1000) >> 16;
             dhcp_msg.yiaddr[3] = DHCPS_BASE_IP + yi;
             opt_write_u8(&opt, DHCP_OPT_MSG_TYPE, DHCPACK);
             printf("DHCPS: client connected: MAC=%02x:%02x:%02x:%02x:%02x:%02x IP=%u.%u.%u.%u\n",
@@ -243,14 +240,14 @@ static void dhcp_server_process(void *arg, struct udp_pcb *upcb __unused, struct
             goto ignore_request;
     }
 
-    opt_write_n(&opt, DHCP_OPT_SERVER_ID, 4, &ip4_addr_get_u32(ip_2_ip4(&d->ip)));
-    opt_write_n(&opt, DHCP_OPT_SUBNET_MASK, 4, &ip4_addr_get_u32(ip_2_ip4(&d->nm)));
-    opt_write_n(&opt, DHCP_OPT_ROUTER, 4, &ip4_addr_get_u32(ip_2_ip4(&d->ip))); // aka gateway; can have multiple addresses
-    opt_write_n(&opt, DHCP_OPT_DNS, 4, &ip4_addr_get_u32(ip_2_ip4(&d->ip))); // this server is the dns
+    opt_write_n(&opt, DHCP_OPT_SERVER_ID, 4, &ip4_addr_get_u32(ip_2_ip4(&controller.dhcp_server.ip)));
+    opt_write_n(&opt, DHCP_OPT_SUBNET_MASK, 4, &ip4_addr_get_u32(ip_2_ip4(&controller.dhcp_server.nm)));
+    opt_write_n(&opt, DHCP_OPT_ROUTER, 4, &ip4_addr_get_u32(ip_2_ip4(&controller.dhcp_server.ip))); // aka gateway; can have multiple addresses
+    opt_write_n(&opt, DHCP_OPT_DNS, 4, &ip4_addr_get_u32(ip_2_ip4(&controller.dhcp_server.ip))); // this server is the dns
     opt_write_u32(&opt, DHCP_OPT_IP_LEASE_TIME, DEFAULT_LEASE_TIME_S);
     *opt++ = DHCP_OPT_END;
     struct netif *nif = ip_current_input_netif();
-    dhcp_socket_sendto(&d->pcb, nif, &dhcp_msg, opt - (uint8_t *)&dhcp_msg, 0xffffffff, PORT_DHCP_CLIENT);
+    dhcp_socket_sendto(nif, &dhcp_msg, opt - (uint8_t *)&dhcp_msg, 0xffffffff, PORT_DHCP_CLIENT);
 
 ignore_request:
     pbuf_free(p);
@@ -264,18 +261,18 @@ int dhcp_server_init(void)
 
     controller.dhcp_server.pcb = udp_new();
     if (controller.dhcp_server.pcb == NULL) {
-        return -ENOMEM;
-    }
-
-    // Register callback
-    udp_recv(controller.dhcp_server.pcb, dhcp_server_process, (void *)&controller.dhcp_server);
-
-    if(udp_bind(controller.dhcp_server.pcb, IP_ANY_TYPE, PORT_DHCP_SERVER))
-    {
+        puts("Error creating DHCP server");
         return -1;
     }
 
-    puts("DHCP server started");
+    // Register callback
+    udp_recv(controller.dhcp_server.pcb, dhcp_server_process, NULL);
+
+    if(udp_bind(controller.dhcp_server.pcb, IP_ANY_TYPE, PORT_DHCP_SERVER))
+    {
+        puts("Error binding DHCP server");
+        return -1;
+    }
 
     return 0;
 }

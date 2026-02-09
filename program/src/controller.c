@@ -18,6 +18,8 @@ void controller_init(void)
 
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, true);
 
+    inputs_init();
+
     if(wifi_operator_init())
         controller.is_running = false;
 
@@ -61,9 +63,11 @@ static inline void update_time(void)
 
 void controller_handle_inputs_outputs(void)
 {
+    update_time();
+
     cyw43_arch_poll();
 
-    update_time();
+    inputs_update();
 
     udp_server_send();
 

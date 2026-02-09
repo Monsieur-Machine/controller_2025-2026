@@ -1,9 +1,11 @@
 #include "headers/udp_server.h"
 
 #include <stdio.h>
+#include <string.h>
 #include "headers/controller.h"
 
-#define MSG_LEN 128
+#define MSG_LEN (sizeof(uint16_t) + sizeof(inputs_t)) / sizeof(uint8_t)
+#define MSG_DELAY_MS 50.0f
 
 int udp_server_init(void)
 {
@@ -16,34 +18,48 @@ int udp_server_init(void)
 
     if(udp_bind(controller.udp_server.pcb, IP_ADDR_ANY, UDP_SERVER_PORT))
     {
-        printf("Error bind UDP server");
+        puts("Error binding UDP server");
         return -1;
     }
-
-    puts("UDP server started");
 
     return 0;
 }
 
 void udp_server_send(void)
 {
-    static float elapsed_time = 0.0f;
-    elapsed_time += controller.delta_time_ms;
+    static float elapsed_time_ms = 0.0f;
+    elapsed_time_ms += controller.delta_time_ms;
 
     static uint8_t counter = 0;
 
-    if(elapsed_time >= 1000.0f)
+    if(elapsed_time_ms >= MSG_DELAY_MS)
     {
-        elapsed_time = 0.0f;
+        static union data_t {
+            struct {
+                uint16_t packet_number;
+                inputs_t inputs;
+            } hard;
+
+            uint8_t raw[MSG_LEN];
+        } data = {0};
+
+        data.hard.packet_number++;
+        data.hard.inputs = controller.inputs;
 
         struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, MSG_LEN, PBUF_RAM);
-        uint8_t *payload = (uint8_t *)p->payload;
-        payload[0] = counter;
+        memcpy((uint8_t *)p->payload, data.raw, MSG_LEN);
+        //printf("%d:%d   %d\n", data.raw[2], data.raw[3], data.raw[4]);
 
-        udp_sendto(controller.udp_server.pcb, p, IP_ADDR_ANY, UDP_CLIENT_PORT);
+        err_t error_code = udp_sendto(controller.udp_server.pcb, p, IP_ADDR_ANY, UDP_CLIENT_PORT);
 
         pbuf_free(p);
 
+        if(error_code)
+        {
+            printf("UDP send error : %d\n", error_code);
+        }
+
+        elapsed_time_ms = 0.0f;
         counter++;
     }
 }

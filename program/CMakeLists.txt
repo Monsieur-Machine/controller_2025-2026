@@ -17,6 +17,7 @@ pico_sdk_init()
 add_executable(controller
   src/main.c
   src/controller.c
+  src/inputs.c
   src/wifi/wifi_operator.c
   src/wifi/udp_server.c
   src/wifi/dhcp_server.c
@@ -29,9 +30,7 @@ target_include_directories(controller PRIVATE
 
 target_link_libraries(controller
   pico_stdlib
-  hardware_i2c
-  hardware_pwm
-  hardware_uart
+  hardware_adc
   pico_cyw43_arch_lwip_poll
 )
 

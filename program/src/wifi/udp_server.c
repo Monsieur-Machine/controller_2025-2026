@@ -43,12 +43,11 @@ void udp_server_send(void)
             uint8_t raw[MSG_LEN];
         } data = {0};
 
-        data.hard.packet_number++;
+        data.hard.packet_number++; // Auto looping
         data.hard.inputs = controller.inputs;
 
         struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, MSG_LEN, PBUF_RAM);
         memcpy((uint8_t *)p->payload, data.raw, MSG_LEN);
-        //printf("%d:%d   %d\n", data.raw[2], data.raw[3], data.raw[4]);
 
         err_t error_code = udp_sendto(controller.udp_server.pcb, p, IP_ADDR_ANY, UDP_CLIENT_PORT);
 

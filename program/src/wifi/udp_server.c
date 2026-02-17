@@ -36,14 +36,13 @@ void udp_server_send(void)
     {
         static union data_t {
             struct {
-                uint16_t packet_number;
                 inputs_t inputs;
             } hard;
 
             uint8_t raw[MSG_LEN];
         } data = {0};
 
-        data.hard.packet_number++; // Auto looping
+        //data.hard.packet_number++; // Auto looping
         data.hard.inputs = controller.inputs;
 
         struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, MSG_LEN, PBUF_RAM);

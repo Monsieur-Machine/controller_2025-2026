@@ -12,16 +12,16 @@ typedef enum inputs_pin_t {
     BUTTON_WHITE_PIN = 6,
     BUTTON_GREEN_PIN = 2,
 
-    BUTTON_L_PIN = 9,
-    BUTTON_R_PIN = 13,
+    BUTTON_L_PIN = 13,
+    BUTTON_R_PIN = 9,
 }  inputs_pin_t;
 
 #define JOYSTICK_X_AXIS_ADC_INPUT 0
 #define JOYSTICK_Y_AXIS_ADC_INPUT 1
 
 typedef struct inputs_t {
-    int8_t joystick_x;
-    int8_t joystick_y;
+    int16_t joystick_x;
+    int16_t joystick_y;
 
     struct {
         bool button_black : 1;

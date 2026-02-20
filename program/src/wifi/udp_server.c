@@ -4,8 +4,8 @@
 #include <string.h>
 #include "headers/controller.h"
 
-#define MSG_LEN (sizeof(uint16_t) + sizeof(inputs_t)) / sizeof(uint8_t)
-#define MSG_DELAY_MS 50.0f
+#define MSG_LEN (sizeof(inputs_t)) / sizeof(uint8_t)
+#define MSG_DELAY_MS 20.0f
 
 int udp_server_init(void)
 {
@@ -30,8 +30,6 @@ void udp_server_send(void)
     static float elapsed_time_ms = 0.0f;
     elapsed_time_ms += controller.delta_time_ms;
 
-    static uint8_t counter = 0;
-
     if(elapsed_time_ms >= MSG_DELAY_MS)
     {
         static union data_t {
@@ -40,9 +38,8 @@ void udp_server_send(void)
             } hard;
 
             uint8_t raw[MSG_LEN];
-        } data = {0};
+        } data;
 
-        //data.hard.packet_number++; // Auto looping
         data.hard.inputs = controller.inputs;
 
         struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, MSG_LEN, PBUF_RAM);
@@ -58,7 +55,6 @@ void udp_server_send(void)
         }
 
         elapsed_time_ms = 0.0f;
-        counter++;
     }
 }
 

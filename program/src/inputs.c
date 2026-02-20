@@ -5,7 +5,7 @@
 #include <hardware/adc.h>
 #include "headers/controller.h"
 
-#define JOYSTICK_DEAD_ZONE 3
+#define JOYSTICK_DEAD_ZONE 5
 
 void inputs_init(void)
 {
@@ -25,14 +25,17 @@ void inputs_init(void)
 
 void inputs_update(void)
 {
+    // Encoding in 9 bits for values to be between -256 and 255, not optimal now,
+    // but useful later during transaction between the main controller and the motion controller.
+
     // Update joystick x and y position
     adc_select_input(JOYSTICK_X_AXIS_ADC_INPUT);
     uint16_t joystick_raw = adc_read();
-    controller.inputs.joystick_x = (joystick_raw >> 4) - 128;
+    controller.inputs.joystick_x = (joystick_raw >> 3) - 256;
 
     adc_select_input(JOYSTICK_Y_AXIS_ADC_INPUT);
     joystick_raw = adc_read();
-    controller.inputs.joystick_y = (joystick_raw >> 4) - 128;
+    controller.inputs.joystick_y = (joystick_raw >> 3) - 256;
 
     // Dead zone
     if(abs(controller.inputs.joystick_x) < JOYSTICK_DEAD_ZONE)

@@ -45,6 +45,8 @@ void udp_server_send(void)
         struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, MSG_LEN, PBUF_RAM);
         memcpy((uint8_t *)p->payload, data.raw, MSG_LEN);
 
+        //printf(">joystick:%d:%d|xy\n", controller.inputs.joystick_x, controller.inputs.joystick_y);
+
         err_t error_code = udp_sendto(controller.udp_server.pcb, p, IP_ADDR_ANY, UDP_CLIENT_PORT);
 
         pbuf_free(p);
